@@ -9,10 +9,21 @@ class ZwiftAdapter {
         this.speed = 0;
         this.power = 0;
         this.heartrate = 0;
+        this._interval = null;
+    }
 
-        // Start polling Zwift for rider status every 2 seconds
+    startPolling() {
+        if (this._interval) return; // already polling
+        logger.debug("ZwiftAdapter: starting poll interval");
         this._poll();
         this._interval = setInterval(() => this._poll(), 2000);
+    }
+
+    stopPolling() {
+        if (!this._interval) return;
+        logger.debug("ZwiftAdapter: stopping poll interval");
+        clearInterval(this._interval);
+        this._interval = null;
     }
 
     _poll() {
@@ -21,7 +32,12 @@ class ZwiftAdapter {
                 this.updateSpeed(status.speed / 1000000, status.heartrate, status.power);
             })
             .catch(error => {
-                logger.error("couldn't resolve promise riderStatus: " + error);
+                const statusCode = error && error.response && error.response.status;
+                if (statusCode === 404) {
+                    logger.debug("ZwiftAdapter: player " + this.playerId + " is not currently riding (404)");
+                } else {
+                    logger.error("ZwiftAdapter: riderStatus error: " + error);
+                }
             });
     }
 
@@ -42,10 +58,6 @@ class ZwiftAdapter {
         this.speed = spd;
         this.heartrate = hr;
         this.power = pwr;
-    }
-
-    stop() {
-        clearInterval(this._interval);
     }
 }
 

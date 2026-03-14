@@ -18,6 +18,7 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/fanStateOff', function(req, res, next) {
+  req.app.get('zwiftAdapter').stopPolling();
   req.app.set('fanState', 0);
   req.app.set('fanLevel', 0);
   res.render('index', { fanState: 0 });
@@ -25,6 +26,7 @@ router.post('/fanStateOff', function(req, res, next) {
 });
 
 router.post('/fanStateLevel1', function(req, res, next) {
+  req.app.get('zwiftAdapter').stopPolling();
   req.app.set('fanState', 1);
   req.app.set('fanLevel', 1);
   res.render('index', { fanState: 1 });
@@ -32,6 +34,7 @@ router.post('/fanStateLevel1', function(req, res, next) {
 });
 
 router.post('/fanStateLevel2', function(req, res, next) {
+  req.app.get('zwiftAdapter').stopPolling();
   req.app.set('fanState', 2);
   req.app.set('fanLevel', 2);
   res.render('index', { fanState: 2 });
@@ -39,6 +42,7 @@ router.post('/fanStateLevel2', function(req, res, next) {
 });
 
 router.post('/fanStateLevel3', function(req, res, next) {
+  req.app.get('zwiftAdapter').stopPolling();
   req.app.set('fanState', 3);
   req.app.set('fanLevel', 3);
   res.render('index', { fanState: 3 });
@@ -46,12 +50,14 @@ router.post('/fanStateLevel3', function(req, res, next) {
 });
 
 router.post('/fanStateZwiftSim', function(req, res, next) {
+  req.app.get('zwiftAdapter').startPolling();
   req.app.set('fanState', 4);
   res.render('index', { fanState: 4 });
   logger.debug("/fanStateZwiftSim fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
 });
 
 router.post('/fanStateZwiftWrkt', function(req, res, next) {
+  req.app.get('zwiftAdapter').startPolling();
   req.app.set('fanState', 5);
   res.render('index', { fanState: 5 });
   logger.debug("/fanStateZwiftWrkt fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
