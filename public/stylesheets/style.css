@@ -1,57 +1,118 @@
+/* ── Reset & base ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background-color: #ECEFF1;
-  padding: 10px;
-  font: 14px "Roboto", "Noto", "Lucida Grande", "Helvetica", "Arial", sans-serif;
+  background-color: #0d0f14;
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(255, 100, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(0, 180, 255, 0.06) 0%, transparent 60%);
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  font-family: "Roboto", "Noto", "Helvetica Neue", "Arial", sans-serif;
+  color: #e8eaf0;
 }
 
+/* ── Heading ──────────────────────────────────────────────────── */
 h1 {
-  font-size: 64px;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 0 24px rgba(255, 100, 0, 0.6);
+  margin-bottom: 32px;
 }
 
+/* ── Links ────────────────────────────────────────────────────── */
 a {
   text-decoration: none;
 }
 
-/* Shared button styles for both <button> elements and <a> links */
-a.button,
-button.button {
-  background-color: #CFD8DC;
-  border: none;
-  border-radius: 4px;
-  color: black;
-  padding: 48px 32px;
-  text-align: center;
-  text-decoration: none;
-  display: block;
-  font-size: 48px;
-  margin: 5px;
-  width: 100%;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-a.button:hover,
-button.button:hover {
-  background-color: #B0BEC5;
-}
-
-a.button.button_selected,
-button.button_selected {
-  background-color: #90A4AE;
-}
-
-a.button.button_selected:hover,
-button.button_selected:hover {
-  background-color: #B0BEC5;
-}
-
+/* ── Forms ────────────────────────────────────────────────────── */
 form {
   margin: 0;
   padding: 0;
 }
 
+/* ── Buttons (shared for <button> and <a>) ────────────────────── */
+a.button,
+button.button {
+  display: block;
+  width: 100%;
+  padding: 28px 24px;
+  margin: 6px 0;
+
+  background: linear-gradient(135deg, #1a1d26 0%, #22263a 100%);
+  border: 1px solid #2e3348;
+  border-radius: 8px;
+  color: #c8ccd8;
+
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  transition: background 0.15s ease, border-color 0.15s ease,
+              color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+a.button:hover,
+button.button:hover {
+  background: linear-gradient(135deg, #22263a 0%, #2c3150 100%);
+  border-color: #ff6400;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(255, 100, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+a.button:active,
+button.button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ── Selected / active state ──────────────────────────────────── */
+button.button_selected {
+  background: linear-gradient(135deg, #ff6400 0%, #e05000 100%);
+  border-color: #ff8c40;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(255, 100, 0, 0.5);
+}
+
+button.button_selected:hover {
+  background: linear-gradient(135deg, #ff7a20 0%, #f06010 100%);
+  border-color: #ffaa70;
+  box-shadow: 0 0 28px rgba(255, 100, 0, 0.65);
+  transform: translateY(-1px);
+}
+
+/* ── "Get Fan State" link — secondary style ───────────────────── */
+a.button {
+  background: linear-gradient(135deg, #0e1520 0%, #162030 100%);
+  border-color: #1e4060;
+  color: #40a0d0;
+  font-size: 24px;
+  margin-top: 16px;
+}
+
+a.button:hover {
+  border-color: #40c0ff;
+  color: #80d8ff;
+  box-shadow: 0 0 16px rgba(0, 180, 255, 0.3);
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
 footer {
-  margin-top: 20px;
+  margin-top: 40px;
   font-size: 12px;
-  color: #78909C;
+  color: #3a3f52;
+  text-align: center;
+  letter-spacing: 0.5px;
 }
