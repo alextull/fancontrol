@@ -10,25 +10,22 @@ class ZwiftAdapter {
         this.power = 0;
         this.heartrate = 0;
 
-        this.account.getWorld(1).riders()
-            .then(riders => {
-                logger.debug('playerId: ' + JSON.stringify(riders.friendsInWorld[20].playerId));
-            }).catch ( error => { 
-                logger.error(JSON.stringify(error))
-            });
+        // Start polling Zwift for rider status every 2 seconds
+        this._poll();
+        this._interval = setInterval(() => this._poll(), 2000);
+    }
 
+    _poll() {
+        this.account.getWorld(1).riderStatus(this.playerId)
+            .then(status => {
+                this.updateSpeed(status.speed / 1000000, status.heartrate, status.power);
+            })
+            .catch(error => {
+                logger.error("couldn't resolve promise riderStatus: " + error);
+            });
     }
 
     getSpeed() {
-        this.account.getWorld(1).riderStatus(this.playerId)
-        .then(status => {
-            // this.updateSpeed(status.speed); // status.riderStatus.speed
-//            console.log(JSON.stringify(status));
-            this.updateSpeed(status.speed/1000000, status.heartrate, status.power);
-        })
-        .catch(error => {
-            logger.error("couldn't resolve promise riderStatus")
-        });
         return this.speed;
     }
 
@@ -47,6 +44,9 @@ class ZwiftAdapter {
         this.power = pwr;
     }
 
+    stop() {
+        clearInterval(this._interval);
+    }
 }
 
-module.exports  = ZwiftAdapter
+module.exports = ZwiftAdapter;

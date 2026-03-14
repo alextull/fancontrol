@@ -1,5 +1,12 @@
 require('dotenv').config();
 
+// Validate required environment variables at startup
+const required = ['ZWIFT_USERNAME', 'ZWIFT_PASSWORD', 'ZWIFT_PLAYER_ID'];
+const missing = required.filter(key => !process.env[key]);
+if (missing.length > 0) {
+    throw new Error('Missing required environment variables: ' + missing.join(', ') + '. See .env.example');
+}
+
 // Zwift credentials — set these in your .env file (see .env.example)
 module.exports.username = process.env.ZWIFT_USERNAME;
 module.exports.password = process.env.ZWIFT_PASSWORD;
