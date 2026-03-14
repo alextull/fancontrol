@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  fancontrol:
+    build: .
+    ports:
+      - "3033:3033"
+    env_file:
+      - .env
+    volumes:
+      - ./log:/usr/src/app/log
+    restart: unless-stopped
