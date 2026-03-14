@@ -1,5 +1,8 @@
 # Fan Control solution with optional Zwift connection
 
+> **Based on the original project by Sebastian Linz:**
+> [https://github.com/sebastianlinz/FanControl](https://github.com/sebastianlinz/FanControl)
+
 A web-application to control a fan via a Particle Photon. The web-application controls the fan's state and provides it to the Photon over HTTP.
 
 ## Modes and configuration
@@ -138,7 +141,7 @@ This section describes how to install the Particle firmware on the Photon. You w
 
 The picture below shows how the relay shield cabling could look:
 
-![Picture of relay shield cabling](https://gitlab.com/alex.tull/fancontrol/-/raw/main/cabling_relay_shield.jpg)
+![Picture of relay shield cabling](https://github.com/sebastianlinz/FanControl/blob/master/cabling_relay_shield.jpg)
 
 The fan's power cables are connected to the DC adapter. Connect the DC adapter to feed the relay shield (observe polarity). The phase (brown) of the mains feed cable connects to the relay COMM ports. The neutral (blue) connects to the neutral of the fan motor. Each fan speed cable connects to a NO (normally open) port of a relay.
 
