@@ -1,0 +1,38 @@
+extends layout
+
+block content
+  h1= "Fan Control"
+  a(class='button', href='fanStateOff')
+    if fanState == 0
+      div.button_selected OFF
+    else
+      div.button OFF
+  a(class='button', href='fanStateLevel1')
+    if fanState == 1
+      div.button_selected I
+    else
+      div.button I
+  a(class='button', href='fanStateLevel2')
+    if fanState == 2
+      div.button_selected II
+    else
+      div.button II
+  a(class='button', href='fanStateLevel3')
+    if fanState == 3
+      div.button_selected III
+    else
+      div.button III
+  a(class='button', href='fanStateZwiftSim')
+    if fanState == 4
+      div.button_selected Zwift-Simulation
+    else
+      div.button Zwift-Simulation
+  a(class='button', href='fanStateZwiftWrkt')
+    if fanState == 5
+      div.button_selected Zwift-Workout
+    else
+      div.button Zwift-Workout
+  a(class='button', href='getFanLevel')
+    div.button Get Fan State
+  a(class='button', href='setPlayerId')
+      div.button Alex braucht Kühlung
