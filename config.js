@@ -1,7 +1,11 @@
 require('dotenv').config();
 
 // Validate required environment variables at startup
-const required = ['ZWIFT_USERNAME', 'ZWIFT_PASSWORD', 'ZWIFT_PLAYER_ID'];
+const required = [
+    'ZWIFT_USERNAME', 'ZWIFT_PASSWORD', 'ZWIFT_PLAYER_ID',
+    'SPEED_LEVEL1', 'SPEED_LEVEL2', 'SPEED_LEVEL3',
+    'HEARTRATE', 'POWER_LEVEL1', 'POWER_LEVEL2', 'POWER_LEVEL3'
+];
 const missing = required.filter(key => !process.env[key]);
 if (missing.length > 0) {
     throw new Error('Missing required environment variables: ' + missing.join(', ') + '. See .env.example');
@@ -14,18 +18,14 @@ module.exports.password = process.env.ZWIFT_PASSWORD;
 // numbers are the playerId.)
 module.exports.playerId = process.env.ZWIFT_PLAYER_ID;
 
-// Zwift simuation mode: speed to switch fan to 1st level
-module.exports.speedLevel1 = 10;
-// Zwift simuation mode: speed to switch fan to 2nd level
-module.exports.speedLevel2 = 30;
-// Zwift simuation mode: speed to switch fan to 3rd level
-module.exports.speedLevel3 = 40;
+// Zwift simulation mode: speed thresholds (km/h) to switch fan levels
+module.exports.speedLevel1 = Number(process.env.SPEED_LEVEL1);
+module.exports.speedLevel2 = Number(process.env.SPEED_LEVEL2);
+module.exports.speedLevel3 = Number(process.env.SPEED_LEVEL3);
 
 // Zwift workout mode: fan is only switched on if above this heartrate
-module.exports.heartrate = 125;
-//   in workout mode: fan to 1st level if above this power level
-module.exports.powerLevel1 = 150;   // eg. 55% of FTP
-//   in workout mode: fan to 2nd level if above this power level
-module.exports.powerLevel2 = 195;   // eg. 75% of FTP
-//   in workout mode: fan to 3rd level if above this power level
-module.exports.powerLevel3 = 265;   // eg. 95% of FTP
+module.exports.heartrate = Number(process.env.HEARTRATE);
+// Power thresholds (watts) to switch fan levels
+module.exports.powerLevel1 = Number(process.env.POWER_LEVEL1);  // eg. 55% of FTP
+module.exports.powerLevel2 = Number(process.env.POWER_LEVEL2);  // eg. 75% of FTP
+module.exports.powerLevel3 = Number(process.env.POWER_LEVEL3);  // eg. 95% of FTP
