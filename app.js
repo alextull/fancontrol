@@ -12,8 +12,6 @@ var index = require('./routes/index');
 
 var app = express();
 
-var playerId = "917";
-
 // set favicon
 app.use(favicon(path.join(__dirname, 'public', './images/favicon.ico')));
 
@@ -21,8 +19,6 @@ app.use(favicon(path.join(__dirname, 'public', './images/favicon.ico')));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-// uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(mlogger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -51,7 +47,7 @@ app.use(function(err, req, res, next) {
 
 app.set('fanState', 0);
 app.set('fanLevel', 0);
-app.set('zwiftAdapter', new ZwiftAdapter(config.username, config.password, playerId));
+app.set('zwiftAdapter', new ZwiftAdapter(config.username, config.password, config.playerId));
 
+logger.debug("rider:", config.playerId);
 module.exports = app;
-logger.debug("rider:", playerId);

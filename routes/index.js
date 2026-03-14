@@ -2,7 +2,6 @@ var express = require('express');
 var pad = require('pad-number');
 var roundTo = require('round-to');
 var router = express.Router();
-require('../ZwiftAdapter');
 var config = require('../config.js');
 var logger = require('../logger');
 
@@ -121,8 +120,8 @@ router.get('/getFanLevel', function(req, res, next) {
 });
 
 router.get('/setPlayerId', function(req, res, next) {
-  req.app.set('playerId', 917881);
-  res.render('index', {  playerId: 917881 });
+  req.app.set('playerId', config.playerId);
+  res.render('index', { playerId: config.playerId });
   logger.debug("/current Rider: " + req.app.get('playerId'));
 });
 
