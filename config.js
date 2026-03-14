@@ -1,10 +1,11 @@
-// Zwift username
-module.exports.username = "ZWIFT_USERNAME_REDACTED";
-// Zwift password
-module.exports.password = "ZWIFT_PASSWORD_REDACTED";
+require('dotenv').config();
+
+// Zwift credentials — set these in your .env file (see .env.example)
+module.exports.username = process.env.ZWIFT_USERNAME;
+module.exports.password = process.env.ZWIFT_PASSWORD;
 // Zwift player id (find the playerId on your PC running the Zwift client. There is a folder named userXXXXXX. These
 // numbers are the playerId.)
-module.exports.playerId = "917";
+module.exports.playerId = process.env.ZWIFT_PLAYER_ID;
 
 // Zwift simuation mode: speed to switch fan to 1st level
 module.exports.speedLevel1 = 10;
