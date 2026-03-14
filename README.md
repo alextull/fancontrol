@@ -1,83 +1,157 @@
 # Fan Control solution with optional Zwift connection
 
-A web-application to control a fan by a photon. The web-application controls fan's state and provides it to photon. 
+A web-application to control a fan via a Particle Photon. The web-application controls the fan's state and provides it to the Photon over HTTP.
 
 ## Modes and configuration
 
-The photon makes a HTTP request to the node.js-app and gets back a simple line of text containing the desired fan level. The line looks like this: 
+The Photon makes an HTTP GET request to `/getFanLevel` and receives a simple line of text containing the current fan state and level:
 
 ```
 FCS4FLV1PWR0095HR110SPD027.3
 ```
 
-At 8th position the fan level is tramitted (eg. 1).
+| Field | Example | Meaning |
+|-------|---------|---------|
+| `FCS` | `4` | Fan Controller State (mode, see below) |
+| `FLV` | `1` | Fan Level (0–3, actual speed sent to relay) |
+| `PWR` | `0095` | Current power in watts (from Zwift) |
+| `HR`  | `110` | Current heartrate in bpm (from Zwift) |
+| `SPD` | `027.3` | Current speed in km/h (from Zwift) |
 
-`FCS` meens fan controller state which represents one of different modes of operation:
+### Fan States
 
-`0` fan off
+| State | Mode | Description |
+|-------|------|-------------|
+| `0` | Off | Fan off |
+| `1` | Level 1 | Fan at fixed speed 1 |
+| `2` | Level 2 | Fan at fixed speed 2 |
+| `3` | Level 3 | Fan at fixed speed 3 |
+| `4` | Zwift Simulation | Fan level set automatically based on current riding speed |
+| `5` | Zwift Workout | Fan level set automatically based on power, gated by heartrate |
 
-`1` fan level one
+### Zwift Simulation mode (state 4)
 
-`2` fan level two
+Fan level is determined by current speed (km/h), configurable via `.env`:
 
-`3` fan level three
-
-`4` Zwift simulation: according to the nearly actual speed ridden in Zwift the fan level is set. Fan levels are configured in `configure.js` 
 ```
-module.exports.speedLevel1 = 10;
-module.exports.speedLevel2 = 30;
-module.exports.speedLevel3 = 40;
+SPEED_LEVEL1=10   # below this → level 0 (off)
+SPEED_LEVEL2=30   # below this → level 1
+SPEED_LEVEL3=40   # below this → level 2
+                  # above      → level 3
 ```
 
-`5` Zwift workout mode: the fan level is set dependent from power in Zwift if heartrate is above a defined level configured in `configure.js`
+### Zwift Workout mode (state 5)
+
+Fan level is determined by power (watts), but **only if heartrate is above the configured threshold**. During recovery intervals when heartrate drops, the fan turns off automatically.
+
 ```
-module.exports.heartrate = 125;
+HEARTRATE=125     # fan stays off if heartrate is at or below this
 
-module.exports.powerLevel1 = 150;   
-module.exports.powerLevel2 = 200;   
-module.exports.powerLevel3 = 250;   
+POWER_LEVEL1=150  # below this → level 0 (off)
+POWER_LEVEL2=195  # below this → level 1
+POWER_LEVEL3=265  # below this → level 2
+                  # above      → level 3
 ```
 
-Thanks a lot to Just Vervaart and Ogadai. 
+---
 
-Following sections describe how to install node.js app and photon firmware.
+## Installation
 
-## Installation node.js app
+### Prerequisites
 
-1. Clone or download this repository to the host with node.js installed where you want to run the app.
-2. Install dependent packages eg. npm install.
-3. Configure the app with file `configure.js` as described above and you like. There are a few more comments inline in config file.
-4. Run the app with npm start.
-5. Open the app with a browser `http://localhost:3000` or use the IP of the host, if you want to call the app from your mobile phone from within the same network, which would be the case if your host and mobile phone are connected to same Wi-Fi network.
+- Node.js (v18+) **or** Docker
+- A valid Zwift account
+- Your Zwift player ID (the number from the `userXXXXXX` folder on your Zwift PC)
 
-### Testing the app
+### 1. Clone the repository
 
-1. Run the app with `npm start`.
-2. Normaly you would test the app not riding on Zwift. You find the playerId of another rider from log file `./log/fancontrol.log` from within the folder where you cloned the respository. There's an line with `playerId: [5-6digits]`.
-3. Copy the playerId from log-file to the configuration `configure.js`
-4. Now restart the application.
-5. Open the app with a browser `http://localhost:3000` or with an mobile phone.
-6. Tap button `Get Fan State`.
-7. You should see a string like this: `FCS4FLV1PWR0095HR110SPD027.3`. If all values are zero, stop the application and repeate from step 2.
+```bash
+git clone git@gitlab.com:alex.tull/fancontrol.git
+cd fancontrol
+```
 
-## Installation photon app
+### 2. Configure environment variables
 
-This is a short description on how to install the particle app on the photon. Assumption you have a fan with different speeds, a photon, a particle relay shield and a DC adapter.
+Copy the example file and fill in your details:
 
-**Use these instruction at your own risk. Be carefull working with deadly currents**
+```bash
+cp .env.example .env
+```
 
-The picture shows how the cabling of the relay shield could look:
+Edit `.env`:
 
-![Picture of relay shield cabling](https://github.com/sebastianlinz/FanControl/blob/master/cabling_relay_shield.jpg)
+```ini
+ZWIFT_USERNAME=your_zwift_email@example.com
+ZWIFT_PASSWORD=your_zwift_password
+ZWIFT_PLAYER_ID=your_player_id
 
-The fan's power cables are connected to the DC adapter. Connect the DC adapter to feed the relay shield. Be aware of the polarization.  Furthermore the phase (brown) of the power feeding cable is connected with the relay's COMM ports. The neutral (blue) of the power feeding cable is connected with the neutral of the fan's electro motor. The fan motor cables of the different speed levels are connected each one to a NO (normally open) port of an relay. Remember which cable is connected to which relay. The relay shield connects each relay with a digital pin. You find the number of the digital pin next to the relay (eg. D4 next relay 2). Remember the pin numbers you choose.
+SPEED_LEVEL1=10
+SPEED_LEVEL2=30
+SPEED_LEVEL3=40
 
-1. Create an particle app in Web IDE (eg. "FanController").
-2. Copy code from file `photon-src/fancontroller.ino` from repository to Web IDE.
-3. Check and eventually replace the definition of `RELAY2`, `RELAY3` and `RELAY 4` according to your wiring.
-4. Set `HOST_IP` and `HOST_PORT` according to your settings. Choose the IP address of your host running the node.js app and port 3000 or the one you choosed.
-5. Flash the code to the photon.
+HEARTRATE=125
+POWER_LEVEL1=150
+POWER_LEVEL2=195
+POWER_LEVEL3=265
+```
 
-### Testing the photon
+### 3a. Run with Node.js
 
-If the photon is connected to a PC by USB you can use Putty to see log statements.
+```bash
+npm install
+npm start
+```
+
+### 3b. Run with Docker
+
+```bash
+docker compose up --build -d
+```
+
+### 4. Open the app
+
+```
+http://localhost:3033
+```
+
+Or use the host's IP address to access from a mobile phone on the same Wi-Fi network.
+
+---
+
+## Testing the app
+
+1. Start the app with `npm start` or `docker compose up -d`.
+2. Open `http://localhost:3033` in a browser.
+3. Select **Zwift-Simulation** or **Zwift-Workout** mode.
+4. Click **Get Fan State** — you should see a response like `FCS4FLV1PWR0095HR110SPD027.3`.
+5. If all values are zero, the player is not currently riding in Zwift (this is normal when not in a session).
+
+> **Note:** The Zwift API only returns live data while you are actively riding. A 404 response means the player is not currently online in Zwift — this is expected behaviour and is logged at debug level only.
+
+---
+
+## Installation — Photon firmware
+
+This section describes how to install the Particle firmware on the Photon. You will need a fan with multiple speed levels, a Photon, a Particle Relay Shield, and a DC adapter.
+
+> **⚠️ Use these instructions at your own risk. Be careful working with mains voltage.**
+
+The picture below shows how the relay shield cabling could look:
+
+![Picture of relay shield cabling](https://gitlab.com/alex.tull/fancontrol/-/raw/main/cabling_relay_shield.jpg)
+
+The fan's power cables are connected to the DC adapter. Connect the DC adapter to feed the relay shield (observe polarity). The phase (brown) of the mains feed cable connects to the relay COMM ports. The neutral (blue) connects to the neutral of the fan motor. Each fan speed cable connects to a NO (normally open) port of a relay.
+
+1. Create a Particle app in the Web IDE (e.g. "FanController").
+2. Copy the code from `photon-src/fancontroller.ino` into the Web IDE.
+3. Check and update `RELAY2`, `RELAY3`, and `RELAY4` to match your wiring.
+4. Set `HOST_IP` to the IP address of the host running this app, and `HOST_PORT` to `3033`.
+5. Flash the code to the Photon.
+
+### Testing the Photon
+
+If the Photon is connected to a PC via USB, you can use a serial monitor (e.g. PuTTY) to view log output.
+
+---
+
+Thanks to Just Vervaart and Ogadai for the Zwift API library.
