@@ -119,10 +119,4 @@ router.get('/getFanLevel', function(req, res, next) {
   );
 });
 
-router.post('/setPlayerId', function(req, res, next) {
-  req.app.set('playerId', config.playerId);
-  res.render('index', { playerId: config.playerId });
-  logger.debug("/current Rider: " + req.app.get('playerId'));
-});
-
 module.exports = router;
