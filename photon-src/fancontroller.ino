@@ -59,7 +59,8 @@ void resetPins() {
     digitalWrite(RELAY2, LOW);
     digitalWrite(RELAY3, LOW);
     digitalWrite(RELAY4, LOW);
-    Serial.println("FanController.resetPins(): entry.");
+    fanLevel = -1;  // force relay update on next successful response
+    Serial.println("FanController.resetPins(): done.");
 }
 
 void httpRequestBodyHandler(const char *data) {
