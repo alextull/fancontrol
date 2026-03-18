@@ -2,16 +2,16 @@ extends layout
 
 block content
   h1= "Fan Control"
-  form(method='post', action='fanStateOff')
+  form(method='post', action='/fanStateOff')
     button(type='submit', class=fanState == 0 ? 'button button_selected' : 'button') OFF
-  form(method='post', action='fanStateLevel1')
+  form(method='post', action='/fanStateLevel1')
     button(type='submit', class=fanState == 1 ? 'button button_selected' : 'button') I
-  form(method='post', action='fanStateLevel2')
+  form(method='post', action='/fanStateLevel2')
     button(type='submit', class=fanState == 2 ? 'button button_selected' : 'button') II
-  form(method='post', action='fanStateLevel3')
+  form(method='post', action='/fanStateLevel3')
     button(type='submit', class=fanState == 3 ? 'button button_selected' : 'button') III
-  form(method='post', action='fanStateZwiftSim')
+  form(method='post', action='/fanStateZwiftSim')
     button(type='submit', class=fanState == 4 ? 'button button_selected' : 'button') Zwift-Simulation
-  form(method='post', action='fanStateZwiftWrkt')
+  form(method='post', action='/fanStateZwiftWrkt')
     button(type='submit', class=fanState == 5 ? 'button button_selected' : 'button') Zwift-Workout
-  a(class='button', href='getFanLevel') Get Fan State
+  a(class='button', href='/getFanLevel') Get Fan State
