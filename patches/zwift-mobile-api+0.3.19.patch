@@ -1,14 +1,8 @@
 diff --git a/node_modules/zwift-mobile-api/src/World.js b/node_modules/zwift-mobile-api/src/World.js
-index 6bc3075..91dfd4b 100644
+index 6bc3075..2a0a376 100644
 --- a/node_modules/zwift-mobile-api/src/World.js
 +++ b/node_modules/zwift-mobile-api/src/World.js
-@@ -1,4 +1,5 @@
- ﻿const Request = require('./Request')
-+const { riderStatus: decodeRiderStatus } = require('./riderStatus')
- 
- class World {
-     constructor(worldId, tokenFn) {
-@@ -7,7 +8,7 @@ class World {
+@@ -7,7 +7,7 @@ class World {
      }
  
      riders() {
@@ -17,13 +11,12 @@ index 6bc3075..91dfd4b 100644
      }
  
      riderStatus(playerId) {
-@@ -15,7 +16,8 @@ class World {
+@@ -15,7 +15,7 @@ class World {
              throw new Error('A player id is required - world.riderStatus(playerId)')
          }
  
 -        return this.request.json(`/relay/developer/worlds/${this.worldId}/players/${playerId}`);
-+        return this.request.protobuf(`/relay/worlds/${this.worldId}/players/${playerId}`)
-+            .then(buffer => decodeRiderStatus(Buffer.from(buffer)));
++        return this.request.json(`/relay/worlds/${this.worldId}/players/${playerId}`);
      }
  
      segmentResults() {
