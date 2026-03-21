@@ -15,7 +15,7 @@
  *   payload: plain-text log message, e.g. "fan level changed 0 -> 2"
  */
 
-var EventSource = require('eventsource');
+var EventSource = require('eventsource').EventSource;
 var logger = require('./logger');
 
 var RECONNECT_DELAY_MS = 5000;   // wait before reconnecting after an error
