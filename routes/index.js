@@ -137,7 +137,7 @@ router.get('/getFanLevel', function(req, res, next) {
   // Log the exact payload sent back to the Photon at debug level
   logger.debug('/getFanLevel -> Photon: "' + payload + '"');
 
-  res.send(payload);
+  res.send(payload + '\n');
 });
 
 module.exports = router;

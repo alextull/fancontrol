@@ -190,7 +190,12 @@ Log files are rotated at 5 MB, keeping the last 3 files. The `log/` directory is
 4. In a separate terminal, test the `/getFanLevel` endpoint:
    ```bash
    curl http://localhost:3033/getFanLevel
-   # → FCS4FLV0PWR0000HR000SPD000.0
+   # FCS4FLV0PWR0000HR000SPD000.0
+   ```
+   If `PHOTON_SECRET` is set, include the secret header (otherwise the server returns 403):
+   ```bash
+   curl -H "X-Photon-Secret: your-random-secret-here" http://localhost:3033/getFanLevel
+   # FCS4FLV0PWR0000HR000SPD000.0
    ```
 5. If all Zwift values are zero, the player is not currently riding (this is normal when not in a session).
 
