@@ -6,19 +6,23 @@
  *
  * Required environment variables (set in .env):
  *   PARTICLE_DEVICE_ID    — the Photon device ID (24-char hex string)
- *   PARTICLE_ACCESS_TOKEN — a Particle access token (user token or API user
- *                           token with at least the devices:get scope)
+ *   PARTICLE_ACCESS_TOKEN — an API user token for the product
+ *   PARTICLE_PRODUCT_ID   — the product ID or slug (e.g. my-fancontrol-43693)
+ *                           visible in the Particle console URL:
+ *                           console.particle.io/{product-slug}/devices
  *
- * If either variable is missing the module does nothing (opt-in feature).
+ * If PARTICLE_DEVICE_ID or PARTICLE_ACCESS_TOKEN is missing the module does
+ * nothing (opt-in feature).
  *
- * Why /v1/events/ instead of /v1/devices/:id/events/?
+ * Why /v1/products/:product/events/ instead of /v1/devices/:id/events/?
  *   The per-device SSE endpoint (/v1/devices/:id/events/) is restricted to
  *   full Particle user tokens.  API user tokens (created in the Particle
  *   console under "API Users") receive the error:
  *     "API users are not allowed to call this endpoint"
- *   The global event stream (/v1/events/:prefix) works with both token types.
- *   We filter server-side by the "fancontrol" prefix and client-side by the
- *   device's coreid so we only process events from our own Photon.
+ *   The global /v1/events/ endpoint also returns 403 for API user tokens.
+ *   The product event stream (/v1/products/:product/events/:prefix) is the
+ *   correct endpoint for API user tokens scoped to a product.
+ *   We filter client-side by coreid so we only process events from our Photon.
  *
  * Why a custom fetch wrapper?
  *   eventsource v4 uses the Fetch API internally and does not expose a
@@ -41,18 +45,24 @@ var RECONNECT_DELAY_MS = 5000;   // wait before reconnecting after an error
 var PREFIX = '[PHOTON] ';
 
 function start() {
-    var deviceId = process.env.PARTICLE_DEVICE_ID;
-    var token    = process.env.PARTICLE_ACCESS_TOKEN;
+    var deviceId  = process.env.PARTICLE_DEVICE_ID;
+    var token     = process.env.PARTICLE_ACCESS_TOKEN;
+    var productId = process.env.PARTICLE_PRODUCT_ID;
 
     if (!deviceId || !token) {
         logger.info('particle-events: PARTICLE_DEVICE_ID or PARTICLE_ACCESS_TOKEN not set — Photon log forwarding disabled');
         return;
     }
 
-    // Use the global event stream filtered by the "fancontrol" prefix.
-    // This endpoint is accessible to both full user tokens and API user tokens,
-    // unlike the per-device endpoint (/v1/devices/:id/events/).
-    var url = 'https://api.particle.io/v1/events/fancontrol';
+    var url;
+    if (productId) {
+        // Product event stream — works with API user tokens scoped to the product
+        url = 'https://api.particle.io/v1/products/' + productId + '/events/fancontrol';
+    } else {
+        // Fallback: global event stream — requires a full user token (not API user token)
+        url = 'https://api.particle.io/v1/events/fancontrol';
+        logger.warn('particle-events: PARTICLE_PRODUCT_ID not set — falling back to global event stream (requires full user token, not API user token)');
+    }
 
     connect(url, token, deviceId);
 }
