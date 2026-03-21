@@ -119,13 +119,16 @@ router.get('/getFanLevel', function(req, res, next) {
     }
   }
 
-  // Log only when the fan level actually changes — avoids spam every 5 s
-  if (fanLevel !== prevLevel) {
+  // In Zwift modes, always log speed/power/heartrate at info level so they appear in console
+  if (currentFanState === 4 || currentFanState === 5) {
+    var levelTag = fanLevel !== prevLevel
+      ? ' [LEVEL CHANGED ' + prevLevel + ' -> ' + fanLevel + ']'
+      : '';
+    logger.info('/getFanLevel: state=' + currentFanState + ', fanLevel=' + fanLevel
+      + ', spd=' + roundTo(speed, 1) + ', hr=' + heartrate + ', pwr=' + power + levelTag);
+  } else if (fanLevel !== prevLevel) {
     logger.info('/getFanLevel: fan level changed ' + prevLevel + ' -> ' + fanLevel
-      + ' [state=' + currentFanState + ', hr=' + heartrate + ', spd=' + speed + ', pwr=' + power + ']');
-  } else {
-    logger.debug('/getFanLevel: fanState=' + currentFanState + ', fanLevel=' + fanLevel
-      + ', hr=' + heartrate + ', spd=' + speed + ', pwr=' + power);
+      + ' [state=' + currentFanState + ']');
   }
 
   var payload = 'FCS' + currentFanState
