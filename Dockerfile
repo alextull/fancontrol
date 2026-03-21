@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 
 # Install dependencies first (layer caching)
 COPY package*.json ./
+COPY patches/ ./patches/
 RUN npm ci --omit=dev
 
 # Copy application source
