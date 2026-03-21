@@ -13,7 +13,7 @@ A web-application to control a fan via a Particle Photon. The web-application co
 | Web framework | Express 4 |
 | Templating | Pug |
 | Logging | Winston |
-| Zwift integration | zwift-mobile-api (polling) |
+| Zwift integration | zwift-mobile-api (polling, patched via patch-package) |
 | Particle integration | Particle Cloud SSE (`eventsource` v4) |
 | Firmware | C++ (Particle Photon / Wiring) |
 | Containerisation | Docker / Docker Compose |
@@ -135,6 +135,8 @@ npm install
 npm start
 ```
 
+> **Note on `zwift-mobile-api` patch:** The upstream `zwift-mobile-api` package (v0.3.19) uses outdated Zwift API endpoints. A `patch-package` patch in `patches/` is automatically applied by the `postinstall` script during `npm install`. It fixes the auth URL and switches `riderStatus()` to use the protobuf endpoint that Zwift now requires. No manual action is needed.
+
 ### 3b. Run with Docker
 
 ```bash
@@ -250,7 +252,7 @@ Log files are rotated at 5 MB, keeping the last 3 files. The `log/` directory is
    ```
 5. If all Zwift values are zero, the player is not currently riding (this is normal when not in a session).
 
-> **Note:** The Zwift API only returns live data while you are actively riding. A 404 response means the player is not currently online in Zwift — this is expected behaviour and is logged at debug level only.
+> **Note:** The Zwift API only returns live data while you are actively riding. A 404 response means the player is not currently online in Zwift — this is expected behaviour and is logged at debug level only. In Zwift modes (states 4 and 5), speed, heartrate and power are logged at info level on every poll so they are always visible in the console.
 
 ---
 
