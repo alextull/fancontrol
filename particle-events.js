@@ -20,6 +20,13 @@
  *   We filter server-side by the "fancontrol" prefix and client-side by the
  *   device's coreid so we only process events from our own Photon.
  *
+ * Why a custom fetch wrapper?
+ *   eventsource v4 uses the Fetch API internally and does not expose a
+ *   `headers` constructor option.  The only supported extension point is a
+ *   custom `fetch` function passed as `eventSourceInitDict.fetch`.  We use
+ *   this to inject the Authorization header on every request (including
+ *   reconnects) without leaking the token in the URL.
+ *
  * Event format published by the Photon:
  *   name:    "fancontrol/log" | "fancontrol/warn" | "fancontrol/error"
  *   payload: JSON envelope { data, ttl, published_at, coreid }
@@ -45,8 +52,6 @@ function start() {
     // Use the global event stream filtered by the "fancontrol" prefix.
     // This endpoint is accessible to both full user tokens and API user tokens,
     // unlike the per-device endpoint (/v1/devices/:id/events/).
-    // The token is passed in the Authorization header (not the query string)
-    // to avoid leaking it in server logs and URLs.
     var url = 'https://api.particle.io/v1/events/fancontrol';
 
     connect(url, token, deviceId);
@@ -55,9 +60,16 @@ function start() {
 function connect(url, token, deviceId) {
     logger.info('particle-events: connecting to Particle event stream...');
 
-    var es = new EventSource(url, {
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
+    // eventsource v4 uses the Fetch API internally and does not accept a
+    // `headers` option directly.  We inject the Authorization header by
+    // supplying a custom fetch wrapper via the `fetch` init option.
+    function authorizedFetch(input, init) {
+        var headers = new Headers(init && init.headers);
+        headers.set('Authorization', 'Bearer ' + token);
+        return fetch(input, Object.assign({}, init, { headers: headers }));
+    }
+
+    var es = new EventSource(url, { fetch: authorizedFetch });
 
     function handleEvent(level, e) {
         try {
