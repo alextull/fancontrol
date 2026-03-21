@@ -29,7 +29,22 @@ loop - runs continuously over and over
 #define RELAY3 D5
 #define RELAY4 D6
 #define HOST_IP "192.168.178.115"
-#define HOST_PORT 3000
+#define HOST_PORT 3033
+
+// Shared secret sent in every request to /getFanLevel.
+// Must match the PHOTON_SECRET environment variable on the Node.js server.
+// To enable: set HOST_SECRET to your secret string and set HOST_SECRET_ENABLED to 1.
+// To disable: set HOST_SECRET_ENABLED to 0 (server must also have PHOTON_SECRET unset).
+#define HOST_SECRET ""
+#define HOST_SECRET_ENABLED 0
+
+// Number of consecutive HTTP failures before logging an error (avoids single-blip noise)
+#define ERROR_THRESHOLD 3
+
+// Fixed-size buffer for the HTTP response body.
+// The payload format is e.g. "FCS4FLV2PWR0145HR098SPD025.3" (~28 chars).
+// 64 bytes gives ample headroom while keeping stack usage bounded.
+#define MAX_BODY_LEN 64
 
 /**
 * Declaring the variables.
@@ -37,14 +52,25 @@ loop - runs continuously over and over
 unsigned int nextTime = 0;    // Next time to contact the server
 int loopCounter = 0;
 int fanLevel = 0;
+int consecutiveErrors = 0;    // Tracks consecutive HTTP failures
 
 HttpClient http;
 
 // Headers currently need to be set at init, useful for API keys etc.
+// When HOST_SECRET_ENABLED is 1, the X-Photon-Secret header is included so
+// the Node.js server can authenticate requests from this device.
+#if HOST_SECRET_ENABLED
 http_header_t headers[] = {
-    { "Accept" , "*/*"},
-    { NULL, NULL } // NOTE: Always terminate headers will NULL
+    { "Accept",          "*/*"       },
+    { "X-Photon-Secret", HOST_SECRET },
+    { NULL, NULL } // NOTE: Always terminate headers with NULL
 };
+#else
+http_header_t headers[] = {
+    { "Accept", "*/*" },
+    { NULL, NULL } // NOTE: Always terminate headers with NULL
+};
+#endif
 
 http_request_t request;
 http_response_t response;
@@ -64,11 +90,22 @@ void resetPins() {
 }
 
 void httpRequestBodyHandler(const char *data) {
-    char body[strlen(data)];
-    strcpy(body, data);
-    int flv = atoi(&body[7]);
-    Serial.printlnf("httpRequestBodyHandler(data): fan-level  : %d", fanLevel);
-    Serial.printlnf("httpRequestBodyHandler(data): bodyHandler: %d", flv);
+    // Use a fixed-size buffer instead of a VLA to keep stack usage bounded
+    // and prevent a stack overflow if the server ever returns an oversized body.
+    char body[MAX_BODY_LEN];
+    strncpy(body, data, MAX_BODY_LEN - 1);
+    body[MAX_BODY_LEN - 1] = '\0';
+
+    // Locate the "FLV" token rather than relying on a hardcoded byte offset,
+    // so the parse stays correct even if the preceding fields change width.
+    char *flvPtr = strstr(body, "FLV");
+    if (flvPtr == NULL) {
+        Serial.printlnf("httpRequestBodyHandler(): ERROR — 'FLV' token not found in body: \"%s\"", body);
+        return;
+    }
+    int flv = atoi(flvPtr + 3);
+    int prevLevel = fanLevel;
+
     if (fanLevel != flv) {
         resetPins();
         switch ( flv ) {
@@ -82,6 +119,10 @@ void httpRequestBodyHandler(const char *data) {
                 digitalWrite(RELAY4, HIGH);
         }
         fanLevel = flv;
+        // Log only when the fan level actually changes
+        Serial.printlnf("httpRequestBodyHandler(): fan level changed %d -> %d", prevLevel, fanLevel);
+    } else {
+        Serial.printlnf("httpRequestBodyHandler(): fan level unchanged: %d", fanLevel);
     }
 }
 
@@ -107,7 +148,7 @@ void setupHttpRequest() {
     // port of the node.js express app
     request.port = HOST_PORT;
     request.path = "/getFanLevel";
-    Serial.printlnf("FanController.setupHttpRequest(): %s:%d", HOST_IP, HOST_PORT);
+    Serial.printlnf("FanController.setupHttpRequest(): %s:%d%s", HOST_IP, HOST_PORT, request.path);
     
     Serial.println("FanController.setupHttpRequest(): done.");
 }
@@ -134,24 +175,39 @@ void setup() {
 
 void loop() {
     
-    Serial.printlnf("loop(): number %d", ++loopCounter);
-    
     if (nextTime > millis()) {
         return;
     }
 
-    // Get request
+    // Measure HTTP request latency
+    unsigned long t0 = millis();
     http.get(request, response, headers);
-    Serial.printlnf("loop(): Response status: %d", response.status);
+    unsigned long latency = millis() - t0;
+
+    Serial.printlnf("loop()[#%d t=%lums]: GET %s:%d%s -> status=%d latency=%lums",
+        ++loopCounter, millis(), HOST_IP, HOST_PORT, request.path,
+        response.status, latency);
+
     if (response.status == 200) {
-        Serial.print("loop(): HTTP Response Body: ");
-        Serial.println(response.body);
+        // Successful response — reset error counter
+        if (consecutiveErrors > 0) {
+            Serial.printlnf("loop(): connection restored after %d consecutive error(s)", consecutiveErrors);
+            consecutiveErrors = 0;
+        }
+        Serial.printlnf("loop(): response body: \"%s\"", response.body);
         httpRequestBodyHandler(response.body);
     } else {
+        consecutiveErrors++;
+        // Log every individual failure at debug level
+        Serial.printlnf("loop(): ERROR status=%d (consecutive errors: %d)", response.status, consecutiveErrors);
+        // Log a prominent warning once the threshold is crossed
+        if (consecutiveErrors == ERROR_THRESHOLD) {
+            Serial.printlnf("loop(): WARNING — %d consecutive HTTP failures, check connection to %s:%d",
+                consecutiveErrors, HOST_IP, HOST_PORT);
+        }
         resetPins();
     }
 
     // delay between HTTP requests
     nextTime = millis() + 5000;
 }
-

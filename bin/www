@@ -4,38 +4,12 @@
  * Module dependencies.
  */
 
+// Logger transports are configured in logger.js (console always on,
+// file transport enabled when LOG_FILE env var is set).
+// Do NOT add transports here — that would register them twice.
 var logger = require('../logger');
-/**
- * Setup winston logger
- */
-
-function localTimestamp() {
-  return new Date().toString();
-}
-
-logger.addFile({
-  level: 'debug',
-  timestamp: localTimestamp,
-  filename: "./log/fancontrol.log",
-  handleExceptions: true,
-  json: true,
-  maxsize: 5242880, //5MB
-  maxFiles: 5,
-  colorize: false
-});
-
-logger.addConsole({
-  level: 'debug',
-  timestamp: localTimestamp,
-  handleExceptions: true,
-  json: false,
-  colorize: true
-});
-
 var app = require('../app');
-var debug = require('debug')('fancontrolapp:server');
 var http = require('http');
-
 
 /**
  * Get port from environment and store in Express.
@@ -94,11 +68,11 @@ function onError(error) {
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
+      logger.error(bind + ' requires elevated privileges');
       process.exit(1);
       break;
     case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
+      logger.error(bind + ' is already in use');
       process.exit(1);
       break;
     default:
@@ -115,5 +89,5 @@ function onListening() {
   var bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+  logger.info('Listening on ' + bind);
 }

@@ -1,6 +1,10 @@
 const ZwiftAccount = require("zwift-mobile-api");
 var logger = require('./logger');
 
+// If Zwift data is older than this, /getFanLevel will treat it as stale
+// and return fan level 0 (safe off) rather than acting on outdated values.
+const STALE_THRESHOLD_MS = 10000; // 10 seconds
+
 class ZwiftAdapter {
     constructor(username, password, playerId) {
         logger.debug("ZwiftAdapter.constructor()");
@@ -9,6 +13,7 @@ class ZwiftAdapter {
         this.speed = 0;
         this.power = 0;
         this.heartrate = 0;
+        this.lastUpdated = null;  // null until first successful poll
         this._interval = null;
     }
 
@@ -24,6 +29,7 @@ class ZwiftAdapter {
         logger.debug("ZwiftAdapter: stopping poll interval");
         clearInterval(this._interval);
         this._interval = null;
+        this.lastUpdated = null;  // reset staleness on stop
     }
 
     _poll() {
@@ -39,6 +45,14 @@ class ZwiftAdapter {
                     logger.error("ZwiftAdapter: riderStatus error: " + error);
                 }
             });
+    }
+
+    /**
+     * Returns true if the last successful data update is within STALE_THRESHOLD_MS.
+     */
+    isDataFresh() {
+        if (this.lastUpdated === null) return false;
+        return (Date.now() - this.lastUpdated) < STALE_THRESHOLD_MS;
     }
 
     getSpeed() {
@@ -58,6 +72,7 @@ class ZwiftAdapter {
         this.speed = spd;
         this.heartrate = hr;
         this.power = pwr;
+        this.lastUpdated = Date.now();
     }
 }
 

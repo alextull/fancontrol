@@ -7,7 +7,7 @@ A web-application to control a fan via a Particle Photon. The web-application co
 
 ## Modes and configuration
 
-The Photon makes an HTTP GET request to `/getFanLevel` and receives a simple line of text containing the current fan state and level:
+The Photon makes an HTTP GET request to `/getFanLevel` every 5 seconds and receives a simple line of text containing the current fan state and level:
 
 ```
 FCS4FLV1PWR0095HR110SPD027.3
@@ -56,6 +56,10 @@ POWER_LEVEL3=265  # below this → level 2
                   # above      → level 3
 ```
 
+### Stale data protection
+
+In Zwift modes (states 4 and 5), if no successful Zwift API poll has been received within the last 10 seconds, `/getFanLevel` returns fan level 0 (off) rather than acting on outdated values. This ensures the fan turns off safely if the Zwift connection is lost.
+
 ---
 
 ## Installation
@@ -96,6 +100,14 @@ HEARTRATE=125
 POWER_LEVEL1=150
 POWER_LEVEL2=195
 POWER_LEVEL3=265
+
+# Optional: shared secret to authenticate Photon requests (see Security below)
+PHOTON_SECRET=
+
+# Optional: log level (debug | info | warn | error, default: info)
+LOG_LEVEL=info
+# Optional: write logs to a file in addition to the console
+# LOG_FILE=logs/fancontrol.log
 ```
 
 ### 3a. Run with Node.js
@@ -121,13 +133,66 @@ Or use the host's IP address to access from a mobile phone on the same Wi-Fi net
 
 ---
 
+## Security
+
+### CSRF protection
+
+All state-changing POST requests (fan mode buttons) are protected by a double-submit cookie CSRF token. The token is embedded in each form and validated server-side using `crypto.timingSafeEqual`.
+
+### Photon shared secret (`PHOTON_SECRET`)
+
+To prevent any device on the LAN from spoofing `/getFanLevel` responses, you can configure a shared secret:
+
+1. Generate a random secret, e.g.:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+   ```
+2. Set it in `.env`:
+   ```ini
+   PHOTON_SECRET=your-random-secret-here
+   ```
+3. Set the matching values in `photon-src/fancontroller.ino`:
+   ```cpp
+   #define HOST_SECRET         "your-random-secret-here"
+   #define HOST_SECRET_ENABLED 1
+   ```
+4. Flash the updated firmware to the Photon.
+
+When `PHOTON_SECRET` is set, the server rejects any `/getFanLevel` request that does not include the matching `X-Photon-Secret` header with a `403 Forbidden` response. Leave `PHOTON_SECRET` empty to disable the check (useful during development).
+
+### Fan state persistence
+
+The current fan state (`fanState` and `fanLevel`) is persisted to `fanstate.json` on every change and restored on startup. This means the fan resumes its previous mode after a process restart or reboot. The file is written atomically (via a `.tmp` rename) to prevent corruption on power loss.
+
+`fanstate.json` is excluded from git and Docker builds.
+
+---
+
+## Logging
+
+Log output goes to the console by default. Set `LOG_LEVEL=debug` in `.env` to see detailed per-request logs including the exact payload sent to the Photon.
+
+To also write logs to a file, set `LOG_FILE` in `.env`:
+
+```ini
+LOG_FILE=logs/fancontrol.log
+```
+
+Log files are rotated at 5 MB, keeping the last 3 files. The `log/` directory is mounted as a Docker volume so logs survive container restarts.
+
+---
+
 ## Testing the app
 
 1. Start the app with `npm start` or `docker compose up -d`.
 2. Open `http://localhost:3033` in a browser.
 3. Select **Zwift-Simulation** or **Zwift-Workout** mode.
-4. Click **Get Fan State** — you should see a response like `FCS4FLV1PWR0095HR110SPD027.3`.
-5. If all values are zero, the player is not currently riding in Zwift (this is normal when not in a session).
+4. In a separate terminal, test the `/getFanLevel` endpoint:
+   ```bash
+   curl http://localhost:3033/getFanLevel
+   # → FCS4FLV0PWR0000HR000SPD000.0
+   ```
+5. If all Zwift values are zero, the player is not currently riding (this is normal when not in a session).
 
 > **Note:** The Zwift API only returns live data while you are actively riding. A 404 response means the player is not currently online in Zwift — this is expected behaviour and is logged at debug level only.
 
@@ -149,11 +214,17 @@ The fan's power cables are connected to the DC adapter. Connect the DC adapter t
 2. Copy the code from `photon-src/fancontroller.ino` into the Web IDE.
 3. Check and update `RELAY2`, `RELAY3`, and `RELAY4` to match your wiring.
 4. Set `HOST_IP` to the IP address of the host running this app, and `HOST_PORT` to `3033`.
-5. Flash the code to the Photon.
+5. If using the shared secret, set `HOST_SECRET` to match `PHOTON_SECRET` in your `.env` and set `HOST_SECRET_ENABLED` to `1`.
+6. Flash the code to the Photon.
 
 ### Testing the Photon
 
-If the Photon is connected to a PC via USB, you can use a serial monitor (e.g. PuTTY) to view log output.
+If the Photon is connected to a PC via USB, you can use a serial monitor (e.g. PuTTY) to view log output. The firmware logs:
+
+- Every HTTP request with loop counter, timestamp, status code and latency
+- The raw response body received from the server
+- Fan level changes (e.g. `fan level changed 0 -> 2`)
+- A warning after 3 consecutive HTTP failures
 
 ---
 

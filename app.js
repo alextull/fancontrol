@@ -3,10 +3,11 @@ var path = require('path');
 var favicon = require('serve-favicon');
 var mlogger = require('morgan');
 var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
 var config = require('./config');
 var ZwiftAdapter = require('./ZwiftAdapter');
 var logger = require('./logger');
+var csrf = require('./csrf');
+var fanState = require('./state');
 
 var index = require('./routes/index');
 
@@ -17,13 +18,45 @@ app.use(favicon(path.join(__dirname, 'public', './images/favicon.ico')));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+app.set('view engine', 'pug');
 
-app.use(mlogger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+// Morgan HTTP request logger — skip the high-frequency Photon poll (/getFanLevel)
+// to avoid log spam; that route has its own dedicated logger below.
+app.use(mlogger('dev', {
+  skip: function(req) { return req.path === '/getFanLevel'; }
+}));
+
+// Dedicated logger for Photon poll requests: logs IP, status and latency at debug level.
+app.use('/getFanLevel', function(req, res, next) {
+  var start = Date.now();
+  res.on('finish', function() {
+    logger.debug('[PHOTON] GET /getFanLevel ' + res.statusCode + ' ' + (Date.now() - start) + 'ms from ' + req.ip);
+  });
+  next();
+});
+
+// S4: Shared-secret authentication for the Photon-only /getFanLevel endpoint.
+// The Photon must send the header: X-Photon-Secret: <value of PHOTON_SECRET env var>
+// If PHOTON_SECRET is not set, the check is skipped (dev/test convenience).
+app.use('/getFanLevel', function(req, res, next) {
+  var secret = process.env.PHOTON_SECRET;
+  if (!secret) return next(); // not configured — skip check
+  if (req.headers['x-photon-secret'] !== secret) {
+    logger.warn('[PHOTON] /getFanLevel rejected: missing or invalid X-Photon-Secret from ' + req.ip);
+    return res.status(403).send('Forbidden');
+  }
+  next();
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// CSRF protection — must come after cookieParser and body parsers,
+// and before any route that handles POST requests.
+// The /getFanLevel route is a Photon-only GET endpoint and is exempt.
+app.use(csrf);
 
 app.use('/', index);
 
@@ -45,9 +78,10 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-app.set('fanState', 0);
-app.set('fanLevel', 0);
+// Load persisted fan state (defaults to 0/0 on first run)
+fanState.load();
+
 app.set('zwiftAdapter', new ZwiftAdapter(config.username, config.password, config.playerId));
 
-logger.debug("rider:", config.playerId);
+logger.info("FanControl app starting");
 module.exports = app;

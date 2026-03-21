@@ -4,8 +4,7 @@ var roundTo = require('round-to');
 var router = express.Router();
 var config = require('../config.js');
 var logger = require('../logger');
-
-// set DEBUG=express:* & npm start
+var fanState = require('../state');
 
 router.get('/*', function(req, res, next) {
   res.setHeader('Last-Modified', (new Date()).toUTCString());
@@ -14,52 +13,51 @@ router.get('/*', function(req, res, next) {
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { fanState: req.app.get('fanState') });
+  res.render('index', {
+    fanState: fanState.state.fanState,
+    csrfToken: res.locals.csrfToken
+  });
 });
 
 router.post('/fanStateOff', function(req, res, next) {
   req.app.get('zwiftAdapter').stopPolling();
-  req.app.set('fanState', 0);
-  req.app.set('fanLevel', 0);
-  logger.debug("/fanStateOff fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setState(0, 0);
+  logger.info('/fanStateOff fanState=0, fanLevel=0');
   res.redirect('/');
 });
 
 router.post('/fanStateLevel1', function(req, res, next) {
   req.app.get('zwiftAdapter').stopPolling();
-  req.app.set('fanState', 1);
-  req.app.set('fanLevel', 1);
-  logger.debug("/fanStateLevel1 fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setState(1, 1);
+  logger.info('/fanStateLevel1 fanState=1, fanLevel=1');
   res.redirect('/');
 });
 
 router.post('/fanStateLevel2', function(req, res, next) {
   req.app.get('zwiftAdapter').stopPolling();
-  req.app.set('fanState', 2);
-  req.app.set('fanLevel', 2);
-  logger.debug("/fanStateLevel2 fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setState(2, 2);
+  logger.info('/fanStateLevel2 fanState=2, fanLevel=2');
   res.redirect('/');
 });
 
 router.post('/fanStateLevel3', function(req, res, next) {
   req.app.get('zwiftAdapter').stopPolling();
-  req.app.set('fanState', 3);
-  req.app.set('fanLevel', 3);
-  logger.debug("/fanStateLevel3 fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setState(3, 3);
+  logger.info('/fanStateLevel3 fanState=3, fanLevel=3');
   res.redirect('/');
 });
 
 router.post('/fanStateZwiftSim', function(req, res, next) {
   req.app.get('zwiftAdapter').startPolling();
-  req.app.set('fanState', 4);
-  logger.debug("/fanStateZwiftSim fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setFanState(4);
+  logger.info('/fanStateZwiftSim fanState=4, fanLevel=' + fanState.state.fanLevel);
   res.redirect('/');
 });
 
 router.post('/fanStateZwiftWrkt', function(req, res, next) {
   req.app.get('zwiftAdapter').startPolling();
-  req.app.set('fanState', 5);
-  logger.debug("/fanStateZwiftWrkt fanState: " + req.app.get('fanState') + ", fanLevel: [" + req.app.get('fanLevel') + "]");
+  fanState.setFanState(5);
+  logger.info('/fanStateZwiftWrkt fanState=5, fanLevel=' + fanState.state.fanLevel);
   res.redirect('/');
 });
 
@@ -86,43 +84,60 @@ function calcFanLevelByPower(speed, heartrate, power) {
 }
 
 router.get('/getFanLevel', function(req, res, next) {
-  var fanState = req.app.get('fanState');
-  var fanLevel = req.app.get('fanLevel');
+  var currentFanState = fanState.state.fanState;
+  var prevLevel = fanState.state.fanLevel;
+  var fanLevel = prevLevel;
   var speed = 0;
   var power = 0;
   var heartrate = 0;
 
-  logger.debug("/getFanLevel fanState: " + fanState + ", fanLevel: [" + fanLevel + "]");
-
-  if (fanState === 4 || fanState === 5) {
+  if (currentFanState === 4 || currentFanState === 5) {
     try {
       var zwiftAdapter = req.app.get('zwiftAdapter');
-      speed = zwiftAdapter.getSpeed();
-      power = zwiftAdapter.getPower();
-      heartrate = zwiftAdapter.getHeartrate();
 
-      var newLevel = fanState === 4
-        ? calcFanLevelBySpeed(speed)
-        : calcFanLevelByPower(speed, heartrate, power);
+      if (!zwiftAdapter.isDataFresh()) {
+        // Zwift data is stale (no successful poll within 10 s) — safe off
+        logger.warn('/getFanLevel: Zwift data is stale, returning fan level 0');
+        fanLevel = 0;
+        fanState.setFanLevel(fanLevel);
+      } else {
+        speed = zwiftAdapter.getSpeed();
+        power = zwiftAdapter.getPower();
+        heartrate = zwiftAdapter.getHeartrate();
 
-      if (newLevel !== null) {
-        fanLevel = newLevel;
-        req.app.set('fanLevel', fanLevel);
+        var newLevel = currentFanState === 4
+          ? calcFanLevelBySpeed(speed)
+          : calcFanLevelByPower(speed, heartrate, power);
+
+        if (newLevel !== null) {
+          fanLevel = newLevel;
+          fanState.setFanLevel(fanLevel);
+        }
       }
-
-      logger.debug("/getFanLevel fanState: " + fanState + ", fanLevel: [" + fanLevel + "], hr: " + heartrate + ", speed: " + speed + ", power: " + power);
     } catch (err) {
-      logger.error(err);
+      logger.error('/getFanLevel: error reading Zwift data: ' + err);
     }
   }
 
-  res.send(
-    'FCS' + fanState
+  // Log only when the fan level actually changes — avoids spam every 5 s
+  if (fanLevel !== prevLevel) {
+    logger.info('/getFanLevel: fan level changed ' + prevLevel + ' -> ' + fanLevel
+      + ' [state=' + currentFanState + ', hr=' + heartrate + ', spd=' + speed + ', pwr=' + power + ']');
+  } else {
+    logger.debug('/getFanLevel: fanState=' + currentFanState + ', fanLevel=' + fanLevel
+      + ', hr=' + heartrate + ', spd=' + speed + ', pwr=' + power);
+  }
+
+  var payload = 'FCS' + currentFanState
     + 'FLV' + fanLevel
     + 'PWR' + pad(power, 4)
-    + 'HR' + pad(heartrate, 3)
-    + 'SPD' + pad(roundTo(speed, 1), 5)
-  );
+    + 'HR'  + pad(heartrate, 3)
+    + 'SPD' + pad(roundTo(speed, 1), 5);
+
+  // Log the exact payload sent back to the Photon at debug level
+  logger.debug('/getFanLevel -> Photon: "' + payload + '"');
+
+  res.send(payload);
 });
 
 module.exports = router;

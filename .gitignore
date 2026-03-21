@@ -58,4 +58,7 @@ typings/
 # dotenv environment variables file
 .env
 
+# Runtime fan state persistence file
+fanstate.json
+
 _config.js
