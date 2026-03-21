@@ -41,6 +41,11 @@ class ZwiftAdapter {
                 const statusCode = error && error.response && error.response.status;
                 if (statusCode === 404) {
                     logger.debug("ZwiftAdapter: player " + this.playerId + " is not currently riding (404)");
+                } else if (statusCode === 403) {
+                    logger.warn("ZwiftAdapter: riderStatus returned 403 Forbidden — Zwift has restricted access to this endpoint. Stopping polling.");
+                    this.stopPolling();
+                } else if (statusCode === 401) {
+                    logger.warn("ZwiftAdapter: riderStatus returned 401 Unauthorized — check Zwift credentials.");
                 } else {
                     logger.error("ZwiftAdapter: riderStatus error: " + error);
                 }
