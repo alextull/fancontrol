@@ -100,7 +100,10 @@ void httpRequestBodyHandler(const char *data) {
     // so the parse stays correct even if the preceding fields change width.
     char *flvPtr = strstr(body, "FLV");
     if (flvPtr == NULL) {
-        Serial.printlnf("httpRequestBodyHandler(): ERROR — 'FLV' token not found in body: \"%s\"", body);
+        char msg[MAX_BODY_LEN + 40];
+        snprintf(msg, sizeof(msg), "FLV token not found in body: \"%s\"", body);
+        Serial.printlnf("httpRequestBodyHandler(): ERROR — %s", msg);
+        Particle.publish("fancontrol/error", msg, PRIVATE);
         return;
     }
     int flv = atoi(flvPtr + 3);
@@ -120,7 +123,10 @@ void httpRequestBodyHandler(const char *data) {
         }
         fanLevel = flv;
         // Log only when the fan level actually changes
-        Serial.printlnf("httpRequestBodyHandler(): fan level changed %d -> %d", prevLevel, fanLevel);
+        char msg[48];
+        snprintf(msg, sizeof(msg), "fan level changed %d -> %d", prevLevel, fanLevel);
+        Serial.printlnf("httpRequestBodyHandler(): %s", msg);
+        Particle.publish("fancontrol/log", msg, PRIVATE);
     } else {
         Serial.printlnf("httpRequestBodyHandler(): fan level unchanged: %d", fanLevel);
     }
@@ -202,8 +208,11 @@ void loop() {
         Serial.printlnf("loop(): ERROR status=%d (consecutive errors: %d)", response.status, consecutiveErrors);
         // Log a prominent warning once the threshold is crossed
         if (consecutiveErrors == ERROR_THRESHOLD) {
-            Serial.printlnf("loop(): WARNING — %d consecutive HTTP failures, check connection to %s:%d",
+            char warn[80];
+            snprintf(warn, sizeof(warn), "%d consecutive HTTP failures, check connection to %s:%d",
                 consecutiveErrors, HOST_IP, HOST_PORT);
+            Serial.printlnf("loop(): WARNING — %s", warn);
+            Particle.publish("fancontrol/warn", warn, PRIVATE);
         }
         resetPins();
     }

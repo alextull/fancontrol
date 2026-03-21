@@ -160,6 +160,35 @@ To prevent any device on the LAN from spoofing `/getFanLevel` responses, you can
 
 When `PHOTON_SECRET` is set, the server rejects any `/getFanLevel` request that does not include the matching `X-Photon-Secret` header with a `403 Forbidden` response. Leave `PHOTON_SECRET` empty to disable the check (useful during development).
 
+### Particle Cloud log forwarding
+
+Photon log events can be forwarded to the Node.js logger via the Particle Cloud SSE event stream. This is opt-in and requires no USB connection.
+
+**Setup:**
+
+1. Find your device ID at [console.particle.io](https://console.particle.io) → your device → Device ID.
+2. Generate an access token: Particle CLI `particle token create` or via the console.
+3. Set both in `.env`:
+   ```ini
+   PARTICLE_DEVICE_ID=your-24-char-device-id
+   PARTICLE_ACCESS_TOKEN=your-access-token
+   ```
+4. Restart the app — it will connect to the Particle SSE stream and log Photon events inline:
+   ```
+   2026-03-21T10:00:00.000Z - info: [PHOTON] fan level changed 0 -> 2
+   2026-03-21T10:00:05.000Z - warn: [PHOTON] 3 consecutive HTTP failures, check connection to 192.168.178.115:3033
+   ```
+
+If either variable is missing, log forwarding is silently disabled.
+
+**Events published by the Photon:**
+
+| Event name | Level | Trigger |
+|---|---|---|
+| `fancontrol/log` | info | Fan level changes |
+| `fancontrol/warn` | warn | 3+ consecutive HTTP failures |
+| `fancontrol/error` | error | Malformed response body |
+
 ### Fan state persistence
 
 The current fan state (`fanState` and `fanLevel`) is persisted to `fanstate.json` on every change and restored on startup. This means the fan resumes its previous mode after a process restart or reboot. The file is written atomically (via a `.tmp` rename) to prevent corruption on power loss.

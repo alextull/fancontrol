@@ -8,6 +8,7 @@ var ZwiftAdapter = require('./ZwiftAdapter');
 var logger = require('./logger');
 var csrf = require('./csrf');
 var fanState = require('./state');
+var particleEvents = require('./particle-events');
 
 var index = require('./routes/index');
 
@@ -82,6 +83,10 @@ app.use(function(err, req, res, next) {
 fanState.load();
 
 app.set('zwiftAdapter', new ZwiftAdapter(config.username, config.password, config.playerId));
+
+// Start Particle Cloud event forwarding (opt-in — requires PARTICLE_DEVICE_ID
+// and PARTICLE_ACCESS_TOKEN in .env; does nothing if either is missing).
+particleEvents.start();
 
 logger.info("FanControl app starting");
 module.exports = app;
