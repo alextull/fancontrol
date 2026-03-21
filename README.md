@@ -5,6 +5,19 @@
 
 A web-application to control a fan via a Particle Photon. The web-application controls the fan's state and provides it to the Photon over HTTP.
 
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js 18+ |
+| Web framework | Express 4 |
+| Templating | Pug |
+| Logging | Winston |
+| Zwift integration | zwift-mobile-api (polling) |
+| Particle integration | Particle Cloud SSE (`eventsource` v4) |
+| Firmware | C++ (Particle Photon / Wiring) |
+| Containerisation | Docker / Docker Compose |
+
 ## Modes and configuration
 
 The Photon makes an HTTP GET request to `/getFanLevel` every 5 seconds and receives a simple line of text containing the current fan state and level:
@@ -104,6 +117,11 @@ POWER_LEVEL3=265
 # Optional: shared secret to authenticate Photon requests (see Security below)
 PHOTON_SECRET=
 
+# Optional: Particle Cloud log forwarding (see Security below)
+PARTICLE_DEVICE_ID=your-24-char-device-id
+PARTICLE_ACCESS_TOKEN=your-api-user-token
+PARTICLE_PRODUCT_ID=your-product-slug-or-id
+
 # Optional: log level (debug | info | warn | error, default: info)
 LOG_LEVEL=info
 # Optional: write logs to a file in addition to the console
@@ -166,20 +184,24 @@ Photon log events can be forwarded to the Node.js logger via the Particle Cloud 
 
 **Setup:**
 
-1. Find your device ID at [console.particle.io](https://console.particle.io) → your device → Device ID.
-2. Generate an access token: Particle CLI `particle token create` or via the console.
-3. Set both in `.env`:
+1. Find your device ID at [console.particle.io](https://console.particle.io) → your product → Devices → your device → Device ID.
+2. Create an **API user** token for your product: console.particle.io → your product → API Users → New API User. Give it at least the `devices:get` scope.
+3. Find your product slug in the Particle console URL: `console.particle.io/{product-slug}/devices` (e.g. `my-fancontrol-43693`).
+4. Set all three in `.env`:
    ```ini
    PARTICLE_DEVICE_ID=your-24-char-device-id
-   PARTICLE_ACCESS_TOKEN=your-access-token
+   PARTICLE_ACCESS_TOKEN=your-api-user-token
+   PARTICLE_PRODUCT_ID=your-product-slug-or-id
    ```
-4. Restart the app — it will connect to the Particle SSE stream and log Photon events inline:
+5. Restart the app — it will connect to the Particle SSE stream and log Photon events inline:
    ```
    2026-03-21T10:00:00.000Z - info: [PHOTON] fan level changed 0 -> 2
    2026-03-21T10:00:05.000Z - warn: [PHOTON] 3 consecutive HTTP failures, check connection to 192.168.178.115:3033
    ```
 
-If either variable is missing, log forwarding is silently disabled.
+If `PARTICLE_DEVICE_ID` or `PARTICLE_ACCESS_TOKEN` is missing, log forwarding is silently disabled.
+
+> **Note:** The app uses the product event stream endpoint (`/v1/products/{product}/events/`) which is the only SSE endpoint accessible to API user tokens. The per-device endpoint (`/v1/devices/{id}/events/`) and the global endpoint (`/v1/events/`) both return errors for API user tokens. `PARTICLE_PRODUCT_ID` is required when using an API user token.
 
 **Events published by the Photon:**
 
