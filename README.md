@@ -17,6 +17,7 @@ A web-application to control a fan via a Particle Photon. The web-application co
 | Particle integration | Particle Cloud SSE (`eventsource` v4) |
 | Firmware | C++ (Particle Photon / Wiring) |
 | Containerisation | Docker / Docker Compose |
+| Testing | Jest + Supertest |
 
 ## Modes and configuration
 
@@ -235,7 +236,24 @@ Log files are rotated at 5 MB, keeping the last 3 files. The `log/` directory is
 
 ---
 
-## Testing the app
+## Testing
+
+### Automated tests
+
+The test suite uses [Jest](https://jestjs.io/) and [Supertest](https://github.com/ladjs/supertest). No `.env` file or real Zwift account is needed — all external dependencies are mocked.
+
+```bash
+npm test
+```
+
+| Suite | What is covered |
+|-------|----------------|
+| `test/csrf.test.js` | CSRF middleware: token generation, uniqueness, safe-method pass-through, mismatch/missing-token rejection |
+| `test/state.test.js` | Fan state persistence: in-memory updates, atomic disk writes, `load()` resilience against missing/corrupt/invalid files |
+| `test/zwiftAdapter.test.js` | `ZwiftAdapter`: constructor defaults, `updateSpeed`, staleness window, `_poll()` success/404/403/401 handling, `startPolling`/`stopPolling` lifecycle |
+| `test/routes.test.js` | HTTP routes: all speed boundary cases (Zwift Simulation), all heartrate×power boundary cases (Zwift Workout), `/getFanLevel` payload format, Photon secret auth, all POST fan-state routes with valid CSRF, CSRF rejection |
+
+### Manual testing
 
 1. Start the app with `npm start` or `docker compose up -d`.
 2. Open `http://localhost:3033` in a browser.
